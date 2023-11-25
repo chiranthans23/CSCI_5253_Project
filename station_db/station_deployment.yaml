@@ -1,0 +1,29 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: station-mysql
+  labels:
+    app: station-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: station-db
+  template:
+    metadata:
+      labels:
+        app: station-db
+    spec:
+      containers:
+      - name: station-mysql
+        image: mysql
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: stationdb-secrets
+              key: db_root_password
+        ports:
+        - containerPort: 3306
+          name: db-container
