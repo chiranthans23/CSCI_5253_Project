@@ -1,46 +1,67 @@
 import os
-from flask import jsonify, Flask
+from flask import jsonify, Flask, request
 from mysql.connector import Error
 import mysql.connector
+from redis import Redis
 import logging
+import datetime
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.DEBUG)
 
 app = Flask(__name__)
 
+# envs
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_USERNAME = os.getenv("DB_USERNAME", "root")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "c4c_station_pass")
+STATION_1 = os.getenv("STATION_1", "station_1")
+STATION_2 = os.getenv("STATION_2", "station_2")
+STATION_3 = os.getenv("STATION_3", "station_3")
+REQUEST_Q = "request"
+LOGGING_Q = "logging"
+THRESHOLD_COUNT = 5
 
 connection1 = mysql.connector.connect(
-    host=os.getenv("DB_HOST", "localhost"),
-    user=os.getenv("DB_USERNAME", "root"),
-    password=os.getenv("DB_PASSWORD", "c4c_station_pass"),
-    database=os.getenv("STATION_1", "station_1")
+    host = DB_HOST,
+    user = DB_USERNAME,
+    password = DB_PASSWORD,
+    database = STATION_1
     )
 
 connection2 = mysql.connector.connect(
-    host=os.getenv("DB_HOST", "localhost"),
-    user=os.getenv("DB_USERNAME", "root"),
-    password=os.getenv("DB_PASSWORD", "c4c_station_pass"),
-    database=os.getenv("STATION_1", "station_2")
+    host = DB_HOST,
+    user = DB_USERNAME,
+    password = DB_PASSWORD,
+    database = STATION_2
     )
 
 connection3 = mysql.connector.connect(
-    host=os.getenv("DB_HOST", "localhost"),
-    user=os.getenv("DB_USERNAME", "root"),
-    password=os.getenv("DB_PASSWORD", "c4c_station_pass"),
-    database=os.getenv("STATION_1", "station_3")
+    host = DB_HOST,
+    user = DB_USERNAME,
+    password = DB_PASSWORD,
+    database = STATION_3
     )
 
+
+queue = Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 
 print(connection1)
 @app.route("/")
 def hello():
     """Function to test the functionality of the API"""
+    # log.debug(f"[{datetime.datetime.now()}] Recieved request for {request.url} ")
+    # log.debug(f"[{datetime.datetime.now()}] Successfully completed request for {request.url}")
+
+    # queue.rpush(LOGGING_Q,f"[{datetime.datetime.now()}] Successfully completed request for {request.url}")
     return "Hello, world!"
 
 
 @app.route("/request/<int:station_num>/<string:item>/<int:count>", methods=["GET"])
 def get_item(station_num, item, count):
     """Fetches the item from the pantry of the given station"""
+    log.debug(f"[{datetime.datetime.now()}] Recieved request for {request.url} with data {(station_num, item, count)}")
     if station_num not in [1, 2, 3]:
         return jsonify("wrong station number!")
     try:
@@ -67,17 +88,24 @@ def get_item(station_num, item, count):
         
     
         item_count = result[0]
-        if count > item_count:
+        if count > item_count or item_count < THRESHOLD_COUNT:
             resp = jsonify("can't process the request - more items are requested than available")
-            resp.status_code = 404
+            resp.status_code = 200
             return resp
         
         sql = f"UPDATE pantry SET count = {item_count - count} WHERE name = '{item}'"
         cursor.execute(sql)
         connection1.commit()
         
+        queue.rpush(LOGGING_Q, f"[{datetime.datetime.now()}] request for {count} {item}s in station {station_num} completed and the current count is {item_count - count}")
+
+        if item_count - count < THRESHOLD_COUNT:
+            queue.rpush(LOGGING_Q, f"[{datetime.datetime.now()}] self-requested for {THRESHOLD_COUNT - item_count + count} {item}s in station {station_num} as it went lesser than threshold")
+            queue.rpush((station_num, item, THRESHOLD_COUNT - item_count + count))
+
         resp = jsonify("request processed")
         resp.status_code = 200
+        # log.debug(f"[{datetime.datetime.now()}] Successfully completed request {request.url}")
         return resp
     
     except Exception as exception:
