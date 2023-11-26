@@ -1,0 +1,26 @@
+apiVersion: apps/v1 #  for k8s versions before 1.9.0 use apps/v1beta2  and before 1.8.0 use extensions/v1beta1
+kind: Deployment
+metadata:
+  name: request-server
+spec:
+  selector:
+    matchLabels:
+      app: request-server
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: request-server
+    spec:
+      containers:
+      - name: request-server
+        image: chiranthans23/dcscproj-request-server:v1
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        env:
+        - name: REDIS_HOST
+          value: "request-queue"
+        - name: REDIS_PORT
+          value: "6379"

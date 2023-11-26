@@ -57,6 +57,51 @@ def hello():
     # queue.rpush(LOGGING_Q,f"[{datetime.datetime.now()}] Successfully completed request for {request.url}")
     return "Hello, world!"
 
+@app.route("/add/<int:station_num>/<string:item>/<int:count>", methods=["POST"])
+def put_item(station_num, item, count):
+    """ Adds the given amount of item to the specified station"""
+    log.debug(f"[{datetime.datetime.now()}] Recieved request for {request.url} with data {(station_num, item, count)}")
+    
+    if station_num not in [1, 2, 3]:
+        return jsonify("wrong station number!")
+    
+    try:
+        cursor = connection1.cursor()
+        if station_num == 2:
+            cursor = connection2.cursor()
+        elif station_num == 3:
+            cursor = connection3.cursor()
+    except:
+        return jsonify("not connected to db")
+    
+    sql = f"SELECT count FROM pantry WHERE name = '{item}'"
+
+    try:
+        print(sql)
+        cursor.execute(sql)
+        result = cursor.fetchone()
+
+        if not result:
+            resp = jsonify("the requested item doesn't exist in the pantry")
+            resp.status_code = 404
+            return resp
+
+        print(result[0])
+        item_count = result[0]
+        sql = f"UPDATE pantry SET count = {item_count + count} WHERE name = '{item}'"
+        cursor.execute(sql)
+        connection1.commit()
+
+        queue.rpush(LOGGING_Q, f"[{datetime.datetime.now()}] added {count} {item}s in station {station_num} completed and the current count is {item_count + count}")
+
+        resp = jsonify("request processed")
+        resp.status_code = 200
+        return resp
+    
+    except Exception as exception:
+        resp = jsonify(f"couldn't process the request - {str(exception)}")
+        resp.status_code = 400
+        return resp
 
 @app.route("/request/<int:station_num>/<string:item>/<int:count>", methods=["GET"])
 def get_item(station_num, item, count):
