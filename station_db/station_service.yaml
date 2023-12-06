@@ -1,14 +1,59 @@
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: station-mysql1
+#   labels:
+#     app: station-db1
+# spec:
+#   ports:
+#   - port: 3306
+#     protocol: TCP
+#     name: station-mysql1
+#   selector:
+#     app: station-db1
+#   type: LoadBalancer
+
 apiVersion: v1
 kind: Service
 metadata:
-  name: station-mysql
+  name: station-mysql1
   labels:
-    app: station-db
+    app: station-db1
 spec:
   ports:
-  - port: 3306
-    protocol: TCP
-    name: station-mysql
+    - protocol: "TCP"
+      port: 3306
+      targetPort: 3306
   selector:
-    app: station-db
+    app: station-db1
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: station-mysql2
+  labels:
+    app: station-db2
+spec:
+  ports:
+    - protocol: "TCP"
+      port: 4306
+      targetPort: 3306
+  selector:
+    app: station-db2
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: station-mysql3
+  labels:
+    app: station-db3
+spec:
+  ports:
+    - protocol: "TCP"
+      port: 5306
+      targetPort: 3306
+  selector:
+    app: station-db3
   type: LoadBalancer

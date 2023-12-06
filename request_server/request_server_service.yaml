@@ -8,5 +8,5 @@ spec:
     protocol: TCP
     targetPort: 5000
   selector:
-    app: rest
+    app: request-server
   type: LoadBalancer
