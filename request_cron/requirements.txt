@@ -1,0 +1,6 @@
+flask
+jsonpickle
+mysql-connector-python
+pillow
+redis
+urllib3
