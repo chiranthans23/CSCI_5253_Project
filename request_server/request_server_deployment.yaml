@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: request-server
-        image: chiranthans23/dcscproj-request-server:v1
+        image: chiranthans23/dcscproj-request-server:v9
         resources:
           requests:
             cpu: 100m
@@ -24,3 +24,17 @@ spec:
           value: "request-queue"
         - name: REDIS_PORT
           value: "6379"
+        - name: DB1_HOST
+          value: "station-mysql1"
+        - name: DB2_HOST
+          value: "station-mysql2"
+        - name: DB3_HOST
+          value: "station-mysql3"
+        - name: DB_USERNAME
+          value: "root"
+        - name: DB_PASSWORD
+          valueFrom:
+           secretKeyRef:
+             name: stationdb-secrets
+             key: db_root_password
+          

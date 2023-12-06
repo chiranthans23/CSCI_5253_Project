@@ -13,37 +13,111 @@ app = Flask(__name__)
 # envs
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_USERNAME = os.getenv("DB_USERNAME", "root")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "c4c_station_pass")
-STATION_1 = os.getenv("STATION_1", "station_1")
-STATION_2 = os.getenv("STATION_2", "station_2")
-STATION_3 = os.getenv("STATION_3", "station_3")
+DB1_HOST = os.getenv("DB1_HOST", "localhost")
+DB2_HOST = os.getenv("DB2_HOST", "localhost")
+DB3_HOST = os.getenv("DB3_HOST", "localhost")
+DB_USERNAME = os.getenv("DB_USERNAME", "USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "PASS")
 REQUEST_Q = "request"
 LOGGING_Q = "logging"
 THRESHOLD_COUNT = 5
 
-connection1 = mysql.connector.connect(
-    host = DB_HOST,
-    user = DB_USERNAME,
-    password = DB_PASSWORD,
-    database = STATION_1
-    )
+# connecting and setting up initial databases and data
+try:
+    connection1 = mysql.connector.connect(
+        host = DB1_HOST,
+        user = DB_USERNAME,
+        password = DB_PASSWORD,
+        database = "station1"
+        )
+except:
+    connection1 = mysql.connector.connect(
+        host = DB1_HOST,
+        user = DB_USERNAME,
+        password = DB_PASSWORD
+        )
+    cur = connection1.cursor()
+    cur.execute("CREATE DATABASE station1")
+    connection1 = mysql.connector.connect(
+        host = DB1_HOST,
+        user = DB_USERNAME,
+        password = DB_PASSWORD,
+        database = "station1"
+        )
+    cur = connection1.cursor()
+    cur.execute("CREATE TABLE pantry(id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(255), count INT);")
+    cur.execute('INSERT INTO pantry(name, count) VALUES("apple", 10);')
+    connection1.commit()
+    cur.execute('INSERT INTO pantry(name, count) VALUES("mango", 10);')
+    connection1.commit()
+    cur.execute('INSERT INTO pantry(name, count) VALUES("banana", 10);')
+    connection1.commit()
 
-connection2 = mysql.connector.connect(
-    host = DB_HOST,
-    user = DB_USERNAME,
-    password = DB_PASSWORD,
-    database = STATION_2
-    )
+try:
+    connection2 = mysql.connector.connect(
+        host = DB2_HOST,
+        user = DB_USERNAME,
+        password = DB_PASSWORD,
+        database = "station2",
+        port = 4306
+        )
+except:
+    connection2 = mysql.connector.connect(
+        host = DB2_HOST,
+        user = DB_USERNAME,
+        password = DB_PASSWORD,
+        port = 4306
+        )
+    cur = connection2.cursor()
+    cur.execute("CREATE DATABASE station2")
+    connection2 = mysql.connector.connect(
+        host = DB2_HOST,
+        user = DB_USERNAME,
+        password = DB_PASSWORD,
+        database = "station2",
+        port = 4306
+        )
+    cur = connection2.cursor()
+    cur.execute("CREATE TABLE pantry(id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(255), count INT);")
+    cur.execute('INSERT INTO pantry(name, count) VALUES("apple", 10);')
+    connection2.commit()
+    cur.execute('INSERT INTO pantry(name, count) VALUES("mango", 10);')
+    connection2.commit()
+    cur.execute('INSERT INTO pantry(name, count) VALUES("banana", 10);')
+    connection2.commit()
 
-connection3 = mysql.connector.connect(
-    host = DB_HOST,
-    user = DB_USERNAME,
-    password = DB_PASSWORD,
-    database = STATION_3
-    )
-
+try:
+    connection3 = mysql.connector.connect(
+        host = DB3_HOST,
+        user = DB_USERNAME,
+        password = DB_PASSWORD,
+        database = "station3",
+        port = 5306
+        )
+except:
+    connection3 = mysql.connector.connect(
+        host = DB3_HOST,
+        user = DB_USERNAME,
+        password = DB_PASSWORD,
+        port = 5306
+        )
+    cur = connection3.cursor()
+    cur.execute("CREATE DATABASE station3")
+    connection3 = mysql.connector.connect(
+        host = DB3_HOST,
+        user = DB_USERNAME,
+        password = DB_PASSWORD,
+        database = "station3",
+        port = 5306
+        )
+    cur = connection3.cursor()
+    cur.execute("CREATE TABLE pantry(id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(255), count INT);")
+    cur.execute('INSERT INTO pantry(name, count) VALUES("apple", 10);')
+    connection3.commit()
+    cur.execute('INSERT INTO pantry(name, count) VALUES("mango", 10);')
+    connection3.commit()
+    cur.execute('INSERT INTO pantry(name, count) VALUES("banana", 10);')
+    connection3.commit()
 
 queue = Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 
@@ -146,7 +220,7 @@ def get_item(station_num, item, count):
 
         if item_count - count < THRESHOLD_COUNT:
             queue.rpush(LOGGING_Q, f"[{datetime.datetime.now()}] self-requested for {THRESHOLD_COUNT - item_count + count} {item}s in station {station_num} as it went lesser than threshold")
-            queue.rpush((station_num, item, THRESHOLD_COUNT - item_count + count))
+            queue.rpush(REQUEST_Q, f"{station_num},{item},{THRESHOLD_COUNT - item_count + count}")
 
         resp = jsonify("request processed")
         resp.status_code = 200

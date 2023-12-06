@@ -2,21 +2,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: station-mysql
+  name: station-mysql1
   labels:
-    app: station-db
+    app: station-db1
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: station-db
+      app: station-db1
   template:
     metadata:
       labels:
-        app: station-db
+        app: station-db1
     spec:
       containers:
-      - name: station-mysql
+      - name: station-mysql1
         image: mysql
         env:
         - name: MYSQL_ROOT_PASSWORD
@@ -26,4 +26,63 @@ spec:
               key: db_root_password
         ports:
         - containerPort: 3306
-          name: db-container
+          name: db-container1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: station-mysql2
+  labels:
+    app: station-db2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: station-db2
+  template:
+    metadata:
+      labels:
+        app: station-db2
+    spec:
+      containers:
+      - name: station-mysql2
+        image: mysql
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: stationdb-secrets
+              key: db_root_password
+        ports:
+        - containerPort: 3306
+          name: db-container2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: station-mysql3
+  labels:
+    app: station-db3
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: station-db3
+  template:
+    metadata:
+      labels:
+        app: station-db3
+    spec:
+      containers:
+      - name: station-mysql3
+        image: mysql
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: stationdb-secrets
+              key: db_root_password
+        ports:
+        - containerPort: 3306
+          name: db-container3
+
