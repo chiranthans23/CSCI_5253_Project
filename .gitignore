@@ -2,3 +2,5 @@
 .ipynb_checkpoints/*
 Untitled.ipynb
 .vscode
+cassandra/*
+cassandra
