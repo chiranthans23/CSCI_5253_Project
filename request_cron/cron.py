@@ -1,5 +1,7 @@
 import json
+from pprint import pprint
 import os
+from pytz import utc
 from flask import jsonify
 from redis import Redis
 from mysql.connector import Error
@@ -10,7 +12,10 @@ import datetime
 import time
 import atexit
 import requests
+
 from cassandra.cluster import Cluster
+from cassandra.query import BatchStatement
+from cassandra import ConsistencyLevel
 
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -21,12 +26,18 @@ log.setLevel(logging.DEBUG)
 # envs
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+
+# Flask store servers
+F_STORE_PORT = os.getenv("F_STORE_PORT", "3000")
+F_STORE_HOST = os.getenv("F_STORE_HOST", "localhost")
+
 DB_A_HOST = os.getenv("DB_A_HOST", "localhost")
 DB_USERNAME = os.getenv("DB_USERNAME", "root")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "rootpass")
 AUDIT = os.getenv("AUDIT", "order_audit")
 REQUEST_Q = "request"
 LOGGING_Q = "logging"
+RESTOCK_Q = "restock"
 
 queue = Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 
@@ -42,12 +53,11 @@ def printDebugOutput(response):
 def fetch_requests():
     # Fetch reqs from req queue 
     # req fmt: station_num, item, item_req_cnt
-    # queue.rpush(REQUEST_Q, "1, apples, 4")
     req_dict = {}
     station_reqs = []
     while queue.llen(REQUEST_Q) > 0:
-        r = queue.lpop(REQUEST_Q).split(",")
-        station, item, count = int(r[0]), r[1].strip().lower(), int(r[2])
+        r = [i.strip() for i in queue.lpop(REQUEST_Q).split(",")]
+        station, item, count = int(r[0]), r[1].lower(), int(r[2])
         if item in req_dict:
             req_dict[item]+=count
         else:
@@ -56,36 +66,26 @@ def fetch_requests():
     print("station_reqs, req_dict")
     print(station_reqs, req_dict)
     return station_reqs, req_dict
-    
-# data = [('store_1', 'apple', 10, 9.08), ('store_1', 'banana', 10, 5.0), ('store_2', 'orange', 10, 8.0), 
-#         ('store_2', 'milk', 1, 15.0), ('store_3', 'eggs', 10, 3.8), ('store_3', 'apples', 10, 3.8), 
-#         ('store_3', 'cereal', 1, 2.5)]
-
-# orders = [("apples", 10), ("banana", 6)]
 
 def optimize_order(data, orders):
-    # Create a dictionary to store the optimized order
+    # Create a dictionary to store the optimized order - Example format given below
+    # data = [('store_1', 'apple', 10, 9.08), ('store_1', 'banana', 10, 5.0), ('store_2', 'orange', 10, 8.0), 
+    #         ('store_2', 'milk', 1, 15.0), ('store_3', 'eggs', 10, 3.8), ('store_3', 'apples', 10, 3.8), 
+    #         ('store_3', 'cereal', 1, 2.5)]
+
+    # orders = [("apples", 10), ("banana", 6)]
     stores_len = 3
     stores_map = {"store_1": 0, "store_2": 1, "store_3": 2}
     order_stores = [[] for i in range(stores_len)]
 
-    # Iterate through each order
     for item, quantity_requested in orders:
-        # Check if the item is available in the data
         if any(entry[1] == item for entry in data):
             # Filter stores that have the requested item in their inventory
             available_stores = [entry for entry in data if entry[1] == item]
-
-            # Sort stores based on cost per item
             available_stores.sort(key=lambda x: x[3])
-
-            # Iterate through available stores to find the lowest cost
             for entry in available_stores:
                 store, _, quantity_available, cost = entry
-
-                # Check if the store has enough quantity
                 if quantity_requested <= quantity_available:
-                    # Update the optimized order
                     order_stores[stores_map[store]].append((item, quantity_requested))
                     quantity_requested-=quantity_requested
                     break
@@ -98,9 +98,7 @@ def optimize_order(data, orders):
     return order_stores
 
 def fetch_items_from_all_stores():
-    host = "localhost"
-    port = 3000
-    addr = f"http://{host}:{port}"
+    addr = f"http://{F_STORE_HOST}:{F_STORE_PORT}"
     url = addr + f"/items"
     response = requests.get(url)
     print(response, type(response))
@@ -122,12 +120,9 @@ def process_requests(data, req_dict):
     print("optimized_order")
     print(optimized_order)
     return optimized_order
-    # pass
 
 def place_order_on_stores(order_stores):    
-    host = "localhost"
-    store_port = 3000
-    addr = f"http://{host}:{store_port}"
+    addr = f"http://{F_STORE_HOST}:{F_STORE_PORT}"
     order_bills = {}
     order_bills["1"] = []
     order_bills["2"] = []
@@ -146,75 +141,69 @@ def place_order_on_stores(order_stores):
     return order_bills
 
 def gen_uuid():
-    return uuid.UUID()
+    return uuid.uuid4()
 
 def add_final_order_onto_audit_db(order_bills):
     # Add the final order obtained with price onto audit DB
-    
-    # cur.execute("create table orders(id INT PRIMARY KEY AUTO_INCREMENT, store VARCHAR(25), total float);")
-    # cur.execute('create table order_items(id INT PRIMARY KEY AUTO_INCREMENT, order_id int, item varchar(255), quantity int, price float, total_price float, FOREIGN KEY (order_id) REFERENCES orders(id));')
-    # for 
-    # stmt = session.prepare("
-    #     INSERT INTO orders (rowkey, qualifier, info, act_date, log_time)
-    #     VALUES (?, ?, ?, ?, ?)
-    #     IF NOT EXISTS
-    #     ")
-    # results = session.execute(stmt, [arg1, arg2, ...])
-    pass
     for k, v in order_bills.items():
         if v!=[]:
             items, total = v
-            stmt = session.prepare("INSERT INTO orders(id, store, items, total) values ({}, {}, {}, {})")
-            stmt = "BEGIN BATCH"
-            # stmt += "APPLY BATCH"
+            order_uuid = gen_uuid()
+            print(v)
+            stmt = session.prepare("INSERT INTO orders(id, timestamp, store, items, total) values (?,?,?,?,?)")
+            try:
+                res = session.execute(stmt, [order_uuid, datetime.datetime.now(), int(k), items, float(total)])
+            except Exception as e:
+                return f"Exception occurred on add_final_order_onto_audit_db - orders insert: {str(e)}"
+            
+            insert_item = session.prepare("INSERT INTO order_items(id, timestamp, order_id, name, price, quantity, total_price) VALUES (?, ?, ?, ?, ?, ?, ?)")
+            batch = BatchStatement(consistency_level=ConsistencyLevel.QUORUM)
             for i in items:
-                stmt += f"INSERT INTO order_items(id, order_id, )"
+                batch.add(insert_item, (gen_uuid(), datetime.datetime.now(), order_uuid, str(i[0]), float(i[2]), int(i[1]), float(i[3])))
+            try:
+                res = session.execute(batch)
+            except Exception as e:
+                return f"Exception occurred on add_final_order_onto_audit_db - order_items insert: {str(e)}"
+    print("Added orders onto audit DB - successful!")
 
-
-
-
-    
-
-def send_satisfied_req_on_q():
-    pass
+def send_satisfied_req_on_q(full_reqs):
     # Send the final order back on the q, for restock worker to handle
+    for req in full_reqs:
+        queue.rpush(RESTOCK_Q, ", ".join(req))
 
 def cron_job():
     full_reqs, req_dict = fetch_requests()
     store_inventory = fetch_items_from_all_stores()
-    final_order = process_requests(store_inventory, req_dict)
     # format of final order: [[], [], []] each list inside the big list is the order for that store with the index of the list
+    final_order = process_requests(store_inventory, req_dict)
+
     order_bills = place_order_on_stores(final_order)
     print(order_bills)
-    add_final_order_onto_audit_db(order_bills)
-    # send_satisfied_req_on_q(final_order, full_reqs)
+    exc = add_final_order_onto_audit_db(order_bills)
+    if exc:
+        print("\n\nEXCEPTION OCCURRED on audit_db")
+        print(exc)
+    send_satisfied_req_on_q(full_reqs)
 
-
-      
 if __name__ == "__main__":
-    cron_job()
     cluster = Cluster(['0.0.0.0'],port=9042)
     session = cluster.connect('order_audit',wait_for_all_pools=True)
     session.execute('USE order_audit')
-    # rows = session.execute('SELECT * FROM orders')
-    # for row in rows:
-    #     print(row.id,row.total,row.items, row.store)
-    # try:
-    #     cur1 = connection1.cursor()
-    #     cur2 = connection2.cursor()
-    #     cur3 = connection3.cursor()
-    # except:
-    #     Exception("Couldn't connect to the station DBs")
+    # cron_job()
+    scheduler = BackgroundScheduler()
+    print("STARTED JOB  - cron\n\n")
+    scheduler.configure(timezone=utc)
+    logging.getLogger("apscheduler.scheduler").setLevel(logging.DEBUG)
+    scheduler.add_job(func=cron_job, trigger="interval", seconds=60)
+    scheduler.start()
 
+    print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
 
-
-
-
-
-
-# scheduler = BackgroundScheduler()
-# scheduler.add_job(func=print_date_time, trigger="interval", seconds=60)
-# scheduler.start()
-
-# # Shut down the scheduler when exiting the app
-# atexit.register(lambda: scheduler.shutdown())
+    try:
+        # This is here to simulate application activity (which keeps the main thread alive).
+        while True:
+            time.sleep(5)
+    except (KeyboardInterrupt, SystemExit):
+        # Not strictly necessary if daemonic mode is enabled but should be done if possible
+        scheduler.shutdown()
+    

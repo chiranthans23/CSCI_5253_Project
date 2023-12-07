@@ -214,9 +214,6 @@ def order_items(store_num):
     # example format: {'apples': 10, 'banana': 20}
     print(order_json)
     order_list = json.loads(order_json)
-
-    # return order_json
-    # log.debug(f"[{datetime.datetime.now()}] Recieved request for {request.url} with data {(station_num, item, count)}")
     order_bill = []
     order_total = 0.0
     if store_num not in [1, 2, 3]:
@@ -238,7 +235,6 @@ def order_items(store_num):
             print(sql)
             cursor.execute(sql)
             result = cursor.fetchone()
-            # print(result)
 
             if not result:
                 print(item, qty)
@@ -255,7 +251,6 @@ def order_items(store_num):
             cursor.execute(sql)
             connection1.commit()
 
-            # queue.rpush(LOGGING_Q, f"[{datetime.datetime.now()}] added {count} {item}s in station {station_num} completed and the current count is {item_count + count}")
             price = result[1]
             order_total+=(qty*price)
             order_bill.append((item, qty, price, qty*price))
@@ -274,15 +269,6 @@ def order_items(store_num):
     resp.status_code = 200
     return resp
     
-# store_s = "store_1"
-# host = "localhost"
-# addr = f"http://{host}:3000"
-# url = addr + f"/items"
-# response = requests.post(url, json={"apples": 10, "banana": 20})
-# if response.ok:
-#     printDebugOutput(response)
-
-
 if __name__ == "__main__":
     try:
         cur1 = connection1.cursor()
