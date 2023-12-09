@@ -3,14 +3,15 @@ kind: CronJob
 metadata:
   name: request-scheduled
 spec:
+  schedule: '* */1 * * *'
   jobTemplate:
-	metadata:
+    metadata:
       name: request-scheduled
     spec:
       template:
         spec:
           containers:
-          - image: chiranthans23/dcscproj-request-scheduled:v1
+          - image: chiranthans23/dcscproj-request-scheduled:v2
             env:
               - name: REDIS_HOST
                 value: "request-queue"
@@ -19,7 +20,7 @@ spec:
               - name: F_STORE_HOST
                 value: store-server
               - name: CASS_HOST
-                value: audit-cas
+                value: audit-cas-cassandra
               - name: STATION_USER
                 value: cassandra
               - name: STATION_PASS
@@ -28,4 +29,3 @@ spec:
             name: request-scheduled
             resources: {}
           restartPolicy: OnFailure
-schedule: '* */1 * * *'

@@ -1,16 +1,11 @@
 import json
-from pprint import pprint
 import os
 from pytz import utc
-from flask import jsonify
 from redis import Redis
-from mysql.connector import Error
-import mysql.connector
 import uuid
 import logging
 import datetime
 import time
-import atexit
 import requests
 
 from cassandra.cluster import Cluster
