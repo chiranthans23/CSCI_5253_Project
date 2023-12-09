@@ -1,0 +1,31 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: request-scheduled
+spec:
+  jobTemplate:
+	metadata:
+      name: request-scheduled
+    spec:
+      template:
+        spec:
+          containers:
+          - image: chiranthans23/dcscproj-request-scheduled:v1
+            env:
+              - name: REDIS_HOST
+                value: "request-queue"
+              - name: REDIS_PORT
+                value: "6379"
+              - name: F_STORE_HOST
+                value: store-server
+              - name: CASS_HOST
+                value: audit-cas
+              - name: STATION_USER
+                value: cassandra
+              - name: STATION_PASS
+                value: audit_pass
+            imagePullPolicy: Never
+            name: request-scheduled
+            resources: {}
+          restartPolicy: OnFailure
+schedule: '* */1 * * *'

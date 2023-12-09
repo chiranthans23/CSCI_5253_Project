@@ -1,20 +1,20 @@
-apiVersion: apps/v1 #  for k8s versions before 1.9.0 use apps/v1beta2  and before 1.8.0 use extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: request-server
+  name: store-server
 spec:
   selector:
     matchLabels:
-      app: request-server
+      app: store-server
   replicas: 1
   template:
     metadata:
       labels:
-        app: request-server
+        app: store-server
     spec:
       containers:
-      - name: request-server
-        image: chiranthans23/dcscproj-request-server:v9
+      - name: store-server
+        image: chiranthans23/dcscproj-store-server:v3
         resources:
           requests:
             cpu: 100m
@@ -25,16 +25,16 @@ spec:
         - name: REDIS_PORT
           value: "6379"
         - name: DB1_HOST
-          value: "station-mysql1"
+          value: "store-mysql1"
         - name: DB2_HOST
-          value: "station-mysql2"
+          value: "store-mysql2"
         - name: DB3_HOST
-          value: "station-mysql3"
+          value: "store-mysql3"
         - name: DB_USERNAME
           value: "root"
         - name: DB_PASSWORD
           valueFrom:
            secretKeyRef:
-             name: stationdb-secrets
+             name: storedb-secrets
              key: db_root_password
           

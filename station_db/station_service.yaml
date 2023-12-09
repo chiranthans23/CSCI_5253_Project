@@ -57,3 +57,48 @@ spec:
   selector:
     app: station-db3
   type: LoadBalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: store-mysql1
+  labels:
+    app: store-db1
+spec:
+  ports:
+    - protocol: "TCP"
+      port: 6306
+      targetPort: 3306
+  selector:
+    app: store-db1
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: store-mysql2
+  labels:
+    app: store-db2
+spec:
+  ports:
+    - protocol: "TCP"
+      port: 7306
+      targetPort: 3306
+  selector:
+    app: store-db2
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: store-mysql3
+  labels:
+    app: store-db3
+spec:
+  ports:
+    - protocol: "TCP"
+      port: 8306
+      targetPort: 3306
+  selector:
+    app: store-db3
+  type: LoadBalancer

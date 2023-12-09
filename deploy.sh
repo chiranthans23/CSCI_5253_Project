@@ -47,3 +47,12 @@ kubectl apply -f logger/logger_deployment.yaml
 # # request server
 # kubectl apply -f request_server/request_server_service.yaml
 # kubectl apply -f request_server/request_server_deployment.yaml
+
+# # store server
+kubectl apply -f store_server/store_server_service.yaml
+kubectl apply -f store_server/store_server_deployment.yaml
+
+
+helm install audit-cas \
+    --set dbUser.password=audit_pass \
+    oci://REGISTRY_NAME/REPOSITORY_NAME/cassandra

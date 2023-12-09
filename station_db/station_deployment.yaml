@@ -85,4 +85,90 @@ spec:
         ports:
         - containerPort: 3306
           name: db-container3
-
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: store-mysql1
+  labels:
+    app: store-db1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: store-db1
+  template:
+    metadata:
+      labels:
+        app: store-db1
+    spec:
+      containers:
+      - name: store-mysql1
+        image: mysql
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: storedb-secrets
+              key: db_root_password
+        ports:
+        - containerPort: 3306
+          name: db-container4
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: store-mysql2
+  labels:
+    app: store-db2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: store-db2
+  template:
+    metadata:
+      labels:
+        app: store-db2
+    spec:
+      containers:
+      - name: store-mysql2
+        image: mysql
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: storedb-secrets
+              key: db_root_password
+        ports:
+        - containerPort: 3306
+          name: db-container5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: store-mysql3
+  labels:
+    app: store-db3
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: store-db3
+  template:
+    metadata:
+      labels:
+        app: store-db3
+    spec:
+      containers:
+      - name: store-mysql3
+        image: mysql
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: storedb-secrets
+              key: db_root_password
+        ports:
+        - containerPort: 3306
+          name: db-container6

@@ -16,7 +16,7 @@ import requests
 from cassandra.cluster import Cluster
 from cassandra.query import BatchStatement
 from cassandra import ConsistencyLevel
-
+from cassandra.auth import PlainTextAuthProvider
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -31,13 +31,19 @@ REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 F_STORE_PORT = os.getenv("F_STORE_PORT", "3000")
 F_STORE_HOST = os.getenv("F_STORE_HOST", "localhost")
 
-DB_A_HOST = os.getenv("DB_A_HOST", "localhost")
-DB_USERNAME = os.getenv("DB_USERNAME", "root")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "rootpass")
+# DB_A_HOST = os.getenv("DB_A_HOST", "localhost")
+# DB_USERNAME = os.getenv("DB_USERNAME", "root")
+# DB_PASSWORD = os.getenv("DB_PASSWORD", "rootpass")
+
 AUDIT = os.getenv("AUDIT", "order_audit")
 REQUEST_Q = "request"
 LOGGING_Q = "logging"
 RESTOCK_Q = "restock"
+
+#CASSANDRA HOST
+CASS_HOST = os.getenv("CASS_HOST", "localhost")
+STATION_USER = os.getenv("STATION_USER", "root")
+STATION_PASS= os.getenv("STATION_PASS", "pass")
 
 queue = Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 
@@ -186,7 +192,8 @@ def cron_job():
     send_satisfied_req_on_q(full_reqs)
 
 if __name__ == "__main__":
-    cluster = Cluster(['0.0.0.0'],port=9042)
+    auth_provider = PlainTextAuthProvider(username=STATION_USER, password=STATION_PASS)
+    cluster = Cluster([CASS_HOST], auth_provider=auth_provider,  port=9042)
     session = cluster.connect('order_audit',wait_for_all_pools=True)
     session.execute('USE order_audit')
     # cron_job()

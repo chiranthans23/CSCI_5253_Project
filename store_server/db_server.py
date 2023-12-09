@@ -38,14 +38,14 @@ try:
         user = DB_USERNAME,
         password = DB_PASSWORD,
         database = STORE_1,
-        # port = 3305
+        port = 6306
         )
 except:
     connection1 = mysql.connector.connect(
         host = DB1_HOST,
         user = DB_USERNAME,
         password = DB_PASSWORD,
-        # port = 3305
+        port = 6306
         )
     cur = connection1.cursor()
     cur.execute("CREATE DATABASE store_1")
@@ -54,7 +54,7 @@ except:
         user = DB_USERNAME,
         password = DB_PASSWORD,
         database = STORE_1,
-        # port = 3305
+        port = 6306
         )
     cur = connection1.cursor()
     cur.execute("CREATE TABLE store(id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(255), quantity INT, price float);")
@@ -71,14 +71,14 @@ try:
         user = DB_USERNAME,
         password = DB_PASSWORD,
         database = STORE_2,
-        # port = 4305
+        port = 7306
         )
 except:
     connection2 = mysql.connector.connect(
         host = DB2_HOST,
         user = DB_USERNAME,
         password = DB_PASSWORD,
-        # port = 4305
+        port = 7306
         )
     cur = connection2.cursor()
     cur.execute("CREATE DATABASE store_2")
@@ -87,15 +87,15 @@ except:
         user = DB_USERNAME,
         password = DB_PASSWORD,
         database = STORE_2,
-        # port = 4305
+        port = 7306
         )
     cur = connection2.cursor()
     cur.execute("CREATE TABLE store(id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(255), quantity INT, price float);")
-    cur.execute('INSERT INTO store(name, quantity, price) VALUES("orange", 10, 8);')
+    cur.execute('INSERT INTO store(name, quantity, price) VALUES("apple", 2, 8);')
     connection2.commit()
-    cur.execute('INSERT INTO store(name, quantity, price) VALUES("milk", 1, 15);')
+    cur.execute('INSERT INTO store(name, quantity, price) VALUES("banana", 10, 15);')
     connection2.commit()
-    cur.execute('INSERT INTO store(name, quantity, price) VALUES("eggs", 3, 2);')
+    cur.execute('INSERT INTO store(name, quantity, price) VALUES("mango", 9, 2);')
     connection2.commit()
 
 try: 
@@ -104,14 +104,14 @@ try:
         user = DB_USERNAME,
         password = DB_PASSWORD,
         database = STORE_3,
-        # port = 5305
+        port = 8306
         )
 except:
     connection3 = mysql.connector.connect(
         host = DB3_HOST,
         user = DB_USERNAME,
         password = DB_PASSWORD,
-        # port = 5305
+        port = 8306
         )
     cur = connection3.cursor()
     cur.execute("CREATE DATABASE store_3")
@@ -120,15 +120,15 @@ except:
         user = DB_USERNAME,
         password = DB_PASSWORD,
         database = STORE_3,
-        # port = 5305
+        port = 8306
         )
     cur = connection3.cursor()
     cur.execute("CREATE TABLE store(id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(255), quantity INT, price float);")
-    cur.execute('INSERT INTO store(name, quantity, price) VALUES("eggs", 10, 3.80);')
+    cur.execute('INSERT INTO store(name, quantity, price) VALUES("banana", 10, 3.80);')
     connection3.commit()
-    cur.execute('INSERT INTO store(name, quantity, price) VALUES("apples", 15, 4.23);')
+    cur.execute('INSERT INTO store(name, quantity, price) VALUES("apple", 15, 4.23);')
     connection3.commit()
-    cur.execute('INSERT INTO store(name, quantity, price) VALUES("cereal", 3, 5.12);')
+    cur.execute('INSERT INTO store(name, quantity, price) VALUES("mango", 3, 5.12);')
     connection3.commit()
 
 def printDebugOutput(response):
@@ -139,6 +139,11 @@ def printDebugOutput(response):
         print(j)
     except json.JSONDecodeError:
         return response
+
+@app.route("/")
+def hello():
+    """Function to test the functionality of the API"""
+    return "I am up and running"
 
 @app.route("/items", methods=["GET"])
 def fetch_all_items():
