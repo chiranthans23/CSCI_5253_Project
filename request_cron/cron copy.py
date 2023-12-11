@@ -7,8 +7,11 @@ import logging
 import datetime
 import time
 import requests
-from pymongo import MongoClient
 
+from cassandra.cluster import Cluster
+from cassandra.query import BatchStatement
+from cassandra import ConsistencyLevel
+from cassandra.auth import PlainTextAuthProvider
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -46,7 +49,22 @@ def printDebugOutput(response):
         print("Response is", response)
         print(j)
     except json.JSONDecodeError:
-        return response    
+        return response
+
+def create_db_and_tables():
+    stmt = """
+    CREATE KEYSPACE if not exists order_audit1
+    WITH REPLICATION = { 
+    'class' : 'SimpleStrategy', 
+    'replication_factor' : 1 
+    };
+    CREATE TABLE if not exists "order_audit1"."order_items" ("id" UUID,"timestamp" TIMESTAMP,"name" text,"order_id" uuid,"price" float,"quantity" int,"total_price" float, PRIMARY KEY (id, timestamp, order_id));
+    CREATE TABLE if not exists "order_audit1"."orders" ("id" uuid,"timestamp" TIMESTAMP,"items" list<frozen<tuple<text, int, float, float>>>,"store" int,"total" float, PRIMARY KEY (id, timestamp, store));
+    """
+    try:
+        res = session.execute(stmt)
+    except Exception as e:
+        return f"Exception occurred on create_db_and_tables - keyspace create : {str(e)}"
     
 def fetch_requests():
     # Fetch reqs from req queue 
@@ -148,29 +166,20 @@ def add_final_order_onto_audit_db(order_bills):
             items, total = v
             order_uuid = gen_uuid()
             print(v)
-            doc1 = {
-                "id": order_uuid,
-                "timestamp": str(datetime.datetime.now()),
-                "store": int(k), 
-                "items": items,
-                "total": float(total)
-            }
-            db["orders"].insert_one(doc1)
+            stmt = session.prepare("INSERT INTO orders(id, timestamp, store, items, total) values (?,?,?,?,?)")
+            try:
+                res = session.execute(stmt, [order_uuid, datetime.datetime.now(), int(k), items, float(total)])
+            except Exception as e:
+                return f"Exception occurred on add_final_order_onto_audit_db - orders insert: {str(e)}"
             
-            docs = []
-            
+            insert_item = session.prepare("INSERT INTO order_items(id, timestamp, order_id, name, price, quantity, total_price) VALUES (?, ?, ?, ?, ?, ?, ?)")
+            batch = BatchStatement(consistency_level=ConsistencyLevel.QUORUM)
             for i in items:
-                docs.append({
-                    "id": gen_uuid(),
-                    "timestamp": str(datetime.datetime.now()),
-                    "order_id": order_uuid,
-                    "name": str(i[0]),
-                    "price": float(i[2]),
-                    "quantity": int(i[1]),
-                    "total_price": float(i[3])
-                })
-            db["order_items"].insert_many(docs)
-
+                batch.add(insert_item, (gen_uuid(), datetime.datetime.now(), order_uuid, str(i[0]), float(i[2]), int(i[1]), float(i[3])))
+            try:
+                res = session.execute(batch)
+            except Exception as e:
+                return f"Exception occurred on add_final_order_onto_audit_db - order_items insert: {str(e)}"
     print("Added orders onto audit DB - successful!")
 
 def send_satisfied_req_on_q(full_reqs):
@@ -193,11 +202,11 @@ def cron_job():
     send_satisfied_req_on_q(full_reqs)
 
 if __name__ == "__main__":
-    client = MongoClient('localhost', 27017)
-    db = client['order_audit']
-    db.create_collection("order_items")
-    db.create_collection("orders")
-
+    auth_provider = PlainTextAuthProvider(username=STATION_USER, password=STATION_PASS)
+    cluster = Cluster([CASS_HOST], auth_provider=auth_provider,  port=9042)
+    session = cluster.connect('order_audit1',wait_for_all_pools=True)
+    session.execute('USE order_audit')
+    create_db_and_tables()
     # # cron_job()
     # scheduler = BackgroundScheduler()
     print("STARTED JOB  - cron\n\n")
