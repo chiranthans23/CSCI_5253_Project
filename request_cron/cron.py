@@ -50,6 +50,21 @@ def printDebugOutput(response):
         print(j)
     except json.JSONDecodeError:
         return response
+
+def create_db_and_tables():
+    stmt = """
+    CREATE KEYSPACE if not exists order_audit1
+    WITH REPLICATION = { 
+    'class' : 'SimpleStrategy', 
+    'replication_factor' : 1 
+    };
+    CREATE TABLE if not exists "order_audit1"."order_items" ("id" UUID,"timestamp" TIMESTAMP,"name" text,"order_id" uuid,"price" float,"quantity" int,"total_price" float, PRIMARY KEY (id, timestamp, order_id));
+    CREATE TABLE if not exists "order_audit1"."orders" ("id" uuid,"timestamp" TIMESTAMP,"items" list<frozen<tuple<text, int, float, float>>>,"store" int,"total" float, PRIMARY KEY (id, timestamp, store));
+    """
+    try:
+        res = session.execute(stmt)
+    except Exception as e:
+        return f"Exception occurred on create_db_and_tables - keyspace create : {str(e)}"
     
 def fetch_requests():
     # Fetch reqs from req queue 
@@ -189,8 +204,9 @@ def cron_job():
 if __name__ == "__main__":
     auth_provider = PlainTextAuthProvider(username=STATION_USER, password=STATION_PASS)
     cluster = Cluster([CASS_HOST], auth_provider=auth_provider,  port=9042)
-    session = cluster.connect('order_audit',wait_for_all_pools=True)
+    session = cluster.connect('order_audit1',wait_for_all_pools=True)
     session.execute('USE order_audit')
+    create_db_and_tables()
     # # cron_job()
     # scheduler = BackgroundScheduler()
     print("STARTED JOB  - cron\n\n")
