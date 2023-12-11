@@ -61,8 +61,9 @@ def fetch_requests():
         else:
             req_dict[item] = count
         station_reqs.append(r)
-    print("station_reqs, req_dict")
-    print(station_reqs, req_dict)
+    # print("station_reqs, req_dict")
+    # print(station_reqs, req_dict)
+    queue.rpush(LOGGING_Q, f"[{datetime.datetime.now()}] - cron - Fetched requests from request queue")
     return station_reqs, req_dict
 
 def optimize_order(data, orders):
@@ -91,19 +92,18 @@ def optimize_order(data, orders):
                     order_stores[stores_map[store]].append((item, quantity_available))
                     quantity_requested-=quantity_available
         if quantity_requested != 0:
-            print("The store isnt able to satisfy the given request.")
-
+            queue.rpush(LOGGING_Q, f"[{datetime.datetime.now()}] - cron - The store isn't able to satisfy the given request")
     return order_stores
 
 def fetch_items_from_all_stores():
     addr = f"http://{F_STORE_HOST}:{F_STORE_PORT}"
     url = addr + f"/items"
     response = requests.get(url)
-    print(response, type(response))
     if response.ok:
         printDebugOutput(response)
     else:
-        return "Some error occurred in fetch_items_from_all_stores"
+        queue.rpush(LOGGING_Q, f"[{datetime.datetime.now()}] - cron - Some error occurred while fetching items from all stores")
+        return json.loads("Error while fetching ")
     return json.loads(response.text)
     
 def process_requests(data, req_dict):
