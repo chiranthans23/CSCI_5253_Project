@@ -32,10 +32,14 @@ def place_request(station, item, count):
 while True:
     try:
         req = redisClient.blpop(RESTOCK_QUEUE, timeout=0)
+        req = req[1]
+        print(f"Got {req}")
         if len(req.split(", ")) != 3:
             continue
-        sta, item, cnt = req.split(", ")
+        r = req.split(", ")
+        sta, item, cnt = r[0], r[1], r[2]
         place_request(sta, item, cnt)
+
     except Exception as exp:
         print(f"Exception raised in restock loop: {str(exp)}")
     sys.stdout.flush()

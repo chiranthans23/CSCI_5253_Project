@@ -57,13 +57,17 @@ kubectl apply -f store_server/store_server_deployment.yaml
 
 
 # audit DB setup
-helm install audit-cas \
-    --set dbUser.password=audit_pass \
-     oci://registry-1.docker.io/bitnamicharts/cassandra
-export CASSANDRA_PASSWORD=$(kubectl get secret --namespace "default" audit-cas-cassandra -o jsonpath="{.data.cassandra-password}" | base64 -d)
-kubectl run --namespace default audit-cas-cassandra-client --rm --tty -i --restart='Never' \
-   --env CASSANDRA_PASSWORD=$CASSANDRA_PASSWORD \
-    \
-   --image docker.io/bitnami/cassandra:4.1.3-debian-11-r76 -- bash
+# helm install audit-cas \
+#     --set dbUser.password=audit_pass \
+#      oci://registry-1.docker.io/bitnamicharts/cassandra
+# export CASSANDRA_PASSWORD=$(kubectl get secret --namespace "default" audit-cas-cassandra -o jsonpath="{.data.cassandra-password}" | base64 -d)
+# kubectl run --namespace default audit-cas-cassandra-client --rm --tty -i --restart='Never' \
+#    --env CASSANDRA_PASSWORD=$CASSANDRA_PASSWORD \
+#     \
+#    --image docker.io/bitnami/cassandra:4.1.3-debian-11-r76 -- bash
 # cqlsh -u cassandra -p $CASSANDRA_PASSWORD audit-cas-cassandra
 # CREATE keyspace order_audit;
+
+# CREATE TABLE order_audit.orders (ID UUID PRIMARY KEY, timestamp timestamp, store INT, items tuple<int, text, float, float>,  total float)  ;
+# CREATE TABLE order_audit.order_items (ID UUID PRIMARY KEY, name text, timestamp timestamp, order_id UUID, price float, quantity int, total_price float) 
+#  ;

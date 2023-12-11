@@ -1,8 +1,6 @@
 jsonpickle
-mysql-connector-python
 pillow
 redis
 urllib3
 requests
-cassandra-driver
-APScheduler
+pymongo
