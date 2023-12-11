@@ -191,21 +191,23 @@ if __name__ == "__main__":
     cluster = Cluster([CASS_HOST], auth_provider=auth_provider,  port=9042)
     session = cluster.connect('order_audit',wait_for_all_pools=True)
     session.execute('USE order_audit')
-    # cron_job()
-    scheduler = BackgroundScheduler()
+    # # cron_job()
+    # scheduler = BackgroundScheduler()
     print("STARTED JOB  - cron\n\n")
-    scheduler.configure(timezone=utc)
-    logging.getLogger("apscheduler.scheduler").setLevel(logging.DEBUG)
-    scheduler.add_job(func=cron_job, trigger="interval", seconds=60)
-    scheduler.start()
+    cron_job()
+    print("ENDED JOB  - cron\n\n")
+    # scheduler.configure(timezone=utc)
+    # logging.getLogger("apscheduler.scheduler").setLevel(logging.DEBUG)
+    # scheduler.add_job(func=cron_job, trigger="interval", seconds=60)
+    # scheduler.start()
 
-    print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
+    # print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
 
-    try:
-        # This is here to simulate application activity (which keeps the main thread alive).
-        while True:
-            time.sleep(5)
-    except (KeyboardInterrupt, SystemExit):
-        # Not strictly necessary if daemonic mode is enabled but should be done if possible
-        scheduler.shutdown()
+    # try:
+    #     # This is here to simulate application activity (which keeps the main thread alive).
+    #     while True:
+    #         time.sleep(5)
+    # except (KeyboardInterrupt, SystemExit):
+    #     # Not strictly necessary if daemonic mode is enabled but should be done if possible
+    #     scheduler.shutdown()
     
