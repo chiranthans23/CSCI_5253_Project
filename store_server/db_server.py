@@ -3,7 +3,7 @@ import os
 from flask import jsonify, Flask, request
 from mysql.connector import Error
 import mysql.connector
-from redis import Redis
+import redis
 import logging
 import datetime
 import time
@@ -29,7 +29,10 @@ REQUEST_Q = "request"
 LOGGING_Q = "logging"
 THRESHOLD_COUNT = 10
 
+
+redisClient = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 app = Flask(__name__)
+
 
 # Creating and initializing store DB's
 try: 
@@ -41,6 +44,7 @@ try:
         port = 6306
         )
 except:
+    redisClient.rpush(LOGGING_Q, f"[{datetime.datetime.now()}] - store - Creating DB for first time on conn1")
     connection1 = mysql.connector.connect(
         host = DB1_HOST,
         user = DB_USERNAME,
@@ -74,6 +78,7 @@ try:
         port = 7306
         )
 except:
+    redisClient.rpush(LOGGING_Q, f"[{datetime.datetime.now()}] - store - Creating DB for first time on conn2")
     connection2 = mysql.connector.connect(
         host = DB2_HOST,
         user = DB_USERNAME,
@@ -107,6 +112,7 @@ try:
         port = 8306
         )
 except:
+    redisClient.rpush(LOGGING_Q, f"[{datetime.datetime.now()}] - store - Creating DB for first time on conn3")
     connection3 = mysql.connector.connect(
         host = DB3_HOST,
         user = DB_USERNAME,
@@ -154,13 +160,14 @@ def fetch_all_items():
     try:
         cursor = connection1.cursor()
     except:
-        return f"Could not connect to {store_s}"
+        redisClient.rpush(LOGGING_Q, f"[{datetime.datetime.now()}] - store - Could not connect to {store_s}")
+        resp = jsonify(f"Could not connect to {store_s}")
+        resp.status_code = 500
+        return resp
     
     try:
         cursor.execute(sql)
         result = cursor.fetchall()
-        print(f"result from {store_s}")
-        print(result)
         if result and len(result)>0:
             for rec in result:
                 lt = list(rec)
@@ -168,19 +175,23 @@ def fetch_all_items():
                 store_invtry.append(tuple(lt))
 
     except Exception as e:
-        return f"Exception occurred while fetching items from {store_s}: {str(e)}"
+        redisClient.rpush(LOGGING_Q, f"[{datetime.datetime.now()}] - store - Exception occurred while fetching items from {store_s}: {str(e)}")
+        resp = jsonify(f"Exception occurred while fetching items from {store_s}: {str(e)}")
+        resp.status_code = 500
+        return resp
     
     store_s = "store_2"
     try:
         cursor = connection2.cursor()
     except:
-        return f"Could not connect to {store_s}"
+        redisClient.rpush(LOGGING_Q, f"[{datetime.datetime.now()}] - store - Could not connect to {store_s}")
+        resp = jsonify(f"Could not connect to {store_s}")
+        resp.status_code = 500
+        return resp
     
     try:
         cursor.execute(sql)
         result = cursor.fetchall()
-        print(f"result from {store_s}")
-        print(result)
         if result and len(result)>0:
             for rec in result:
                 lt = list(rec)
@@ -188,19 +199,21 @@ def fetch_all_items():
                 store_invtry.append(tuple(lt))
 
     except Exception as e:
-        return f"Exception occurred while fetching items from {store_s}: {str(e)}"
-
+        redisClient.rpush(LOGGING_Q, f"[{datetime.datetime.now()}] - store - Exception occurred while fetching items from {store_s}: {str(e)}")
+        resp = jsonify(f"Exception occurred while fetching items from {store_s}: {str(e)}")
+        resp.status_code = 500
+        return resp
+    
     store_s = "store_3"    
     try:
         cursor = connection3.cursor()
     except:
-        return f"Could not connect to {store_s}"
+        redisClient.rpush(LOGGING_Q, f"[{datetime.datetime.now()}] - store - Could not connect to {store_s}")
+        return jsonify(f"Could not connect to {store_s}")
     
     try:
         cursor.execute(sql)
         result = cursor.fetchall()
-        print(f"result from {store_s}")
-        print(result)
         if result and len(result)>0:
             for rec in result:
                 lt = list(rec)
@@ -208,8 +221,11 @@ def fetch_all_items():
                 store_invtry.append(tuple(lt))
 
     except Exception as e:
-        return f"Exception occurred while fetching items from {store_s}: {str(e)}"
-    print(store_invtry)
+        redisClient.rpush(LOGGING_Q, f"[{datetime.datetime.now()}] - store - Exception occurred while fetching items from {store_s}: {str(e)}")
+        resp = jsonify(f"Exception occurred while fetching items from {store_s}: {str(e)}")
+        resp.status_code = 500
+        return resp
+    
     return jsonify(store_invtry)
 
 @app.route("/order/<int:store_num>", methods=["POST"])
@@ -222,7 +238,10 @@ def order_items(store_num):
     order_bill = []
     order_total = 0.0
     if store_num not in [1, 2, 3]:
-        return jsonify("wrong store number!")
+        redisClient.rpush(LOGGING_Q, f"[{datetime.datetime.now()}] - store - Wrong store number used!")
+        resp = jsonify("wrong store number!")
+        resp.status_code = 500
+        return resp
     
     try:
         cursor = connection1.cursor()
@@ -230,8 +249,11 @@ def order_items(store_num):
             cursor = connection2.cursor()
         elif store_num == 3:
             cursor = connection3.cursor()
-    except:
-        return jsonify("not connected to db")
+    except Exception as e:
+        redisClient.rpush(LOGGING_Q, f"[{datetime.datetime.now()}] - store - Could not connect to DB and message: {str(e)}")
+        resp = jsonify(f"Could not connect to DB and message: {str(e)}")
+        resp.status_code = 500
+        return resp
     
     for item, qty in order_list:
 
@@ -280,6 +302,6 @@ if __name__ == "__main__":
         cur2 = connection2.cursor()
         cur3 = connection3.cursor()
     except:
-        Exception("Couldn't connect to the station DBs")
+        Exception("Couldn't connect to the store DBs")
     app.run(host="0.0.0.0", port=3000)
 

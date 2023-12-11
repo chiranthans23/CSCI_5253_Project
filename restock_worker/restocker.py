@@ -33,7 +33,6 @@ while True:
     try:
         req = redisClient.blpop(RESTOCK_QUEUE, timeout=0)
         req = req[1]
-        print(f"Got {req}")
         if len(req.split(", ")) != 3:
             continue
         r = req.split(", ")
@@ -41,6 +40,6 @@ while True:
         place_request(sta, item, cnt)
 
     except Exception as exp:
-        print(f"Exception raised in restock loop: {str(exp)}")
+        redisClient.rpush(LOGGING_QUEUE, f"[{datetime.datetime.now()}] - restock - Exception raised in restock loop: {str(exp)}")
     sys.stdout.flush()
     sys.stderr.flush()

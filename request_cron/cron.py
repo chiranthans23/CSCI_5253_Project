@@ -53,8 +53,6 @@ def fetch_requests():
         else:
             req_dict[item] = count
         station_reqs.append(r)
-    # print("station_reqs, req_dict")
-    # print(station_reqs, req_dict)
     queue.rpush(LOGGING_Q, f"[{datetime.datetime.now()}] - cron - Fetched requests from request queue")
     return station_reqs, req_dict
 
@@ -94,8 +92,8 @@ def fetch_items_from_all_stores():
     if response.ok:
         printDebugOutput(response)
     else:
-        queue.rpush(LOGGING_Q, f"[{datetime.datetime.now()}] - cron - Some error occurred while fetching items from all stores")
-        return json.loads("Error while fetching ")
+        queue.rpush(LOGGING_Q, f"[{datetime.datetime.now()}] - cron - Some error occurred while fetching items from all stores and message: {response.text}")
+        return json.loads(f"Error while fetching items from all store DBs with message: {response.text}")
     return json.loads(response.text)
     
 def process_requests(data, req_dict):
@@ -104,11 +102,7 @@ def process_requests(data, req_dict):
     orders = []
     for item, qty in req_dict.items():
         orders.append((item, qty))
-    print("orders")
-    print(orders)
     optimized_order = optimize_order(data, orders)
-    print("optimized_order")
-    print(optimized_order)
     return optimized_order
 
 def place_order_on_stores(order_stores):    
@@ -126,8 +120,8 @@ def place_order_on_stores(order_stores):
                 resp = json.loads(response.text)
                 order_bills[str(store_num+1)] = (resp["order_bill"], resp["order_total"])
             else:
-                print(response.status_code, response.text)
-                print("Some error occurred on place_order_on_stores")
+                queue.rpush(LOGGING_Q, f"[{datetime.datetime.now()}] - cron - Some error occurred while placing order to stores with status code: {response.status_code} and with text: {response.text}")
+                return json.loads(f"Error occurred while placing order to stores with status code: {response.status_code} and with text: {response.text}")
     return order_bills
 
 def gen_uuid():
@@ -139,7 +133,6 @@ def add_final_order_onto_audit_db(order_bills):
         if v!=[]:
             items, total = v
             order_uuid = gen_uuid()
-            print(v)
             doc1 = {
                 "id": order_uuid,
                 "timestamp": str(datetime.datetime.now()),
@@ -163,51 +156,33 @@ def add_final_order_onto_audit_db(order_bills):
                 })
             db["order_items"].insert_many(docs)
 
-    print("Added orders onto audit DB - successful!")
+    queue.rpush(LOGGING_Q, f"[{datetime.datetime.now()}] - cron - Added orders onto audit DB - successful!")
 
 def send_satisfied_req_on_q(full_reqs):
     # Send the final order back on the q, for restock worker to handle
     for req in full_reqs:
-        print(f" Sending req {req}")
+        queue.rpush(LOGGING_Q, f"[{datetime.datetime.now()}] - cron - Sending full request back to C4C server on restock queue")
         queue.rpush(RESTOCK_Q, ", ".join(req))
 
 def cron_job():
     full_reqs, req_dict = fetch_requests()
     store_inventory = fetch_items_from_all_stores()
+    if "Error" in store_inventory:
+        return "Error occurred when fetching items from all stores"
     # format of final order: [[], [], []] each list inside the big list is the order for that store with the index of the list
     final_order = process_requests(store_inventory, req_dict)
 
     order_bills = place_order_on_stores(final_order)
-    print(order_bills)
     exc = add_final_order_onto_audit_db(order_bills)
     if exc:
-        print("\n\nEXCEPTION OCCURRED on audit_db")
-        print(exc)
+        queue.rpush(LOGGING_Q, f"[{datetime.datetime.now()}] - cron - Exception occurred while adding final order details onto audit DB with message: {exc}")
+        return
     send_satisfied_req_on_q(full_reqs)
 
 if __name__ == "__main__":
     client = MongoClient(AUDIT_HOST, 27017, uuidRepresentation = 'standard')
     db = client['order_audit']
-    # db.create_collection("order_items")
-    # db.create_collection("orders")
-
-    # # cron_job()
-    # scheduler = BackgroundScheduler()
-    print("STARTED JOB  - cron\n\n")
-    cron_job()
-    print("ENDED JOB  - cron\n\n")
-    # scheduler.configure(timezone=utc)
-    # logging.getLogger("apscheduler.scheduler").setLevel(logging.DEBUG)
-    # scheduler.add_job(func=cron_job, trigger="interval", seconds=60)
-    # scheduler.start()
-
-    # print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
-
-    # try:
-    #     # This is here to simulate application activity (which keeps the main thread alive).
-    #     while True:
-    #         time.sleep(5)
-    # except (KeyboardInterrupt, SystemExit):
-    #     # Not strictly necessary if daemonic mode is enabled but should be done if possible
-    #     scheduler.shutdown()
     
+    queue.rpush(LOGGING_Q, f"[{datetime.datetime.now()}] - cron - Cron job started")
+    cron_job()
+    queue.rpush(LOGGING_Q, f"[{datetime.datetime.now()}] - cron - Cron job ended")
