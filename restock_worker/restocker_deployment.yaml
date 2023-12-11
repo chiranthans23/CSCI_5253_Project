@@ -1,0 +1,30 @@
+apiVersion: apps/v1 #  for k8s versions before 1.9.0 use apps/v1beta2  and before 1.8.0 use extensions/v1beta1
+kind: Deployment
+metadata:
+  name: restocker
+spec:
+  selector:
+    matchLabels:
+      app: restocker
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: restocker
+    spec:
+      containers:
+      - name: restocker
+        image: chiranthans23/dcscproj-restocker:v2
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        env:
+        - name: REDIS_HOST
+          value: "request-queue"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: REQUEST_HOST
+          value: "request-server"
+        - name: REQUEST_PORT
+          value: "5000"

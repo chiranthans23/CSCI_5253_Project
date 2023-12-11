@@ -43,16 +43,27 @@ sleep 4
 # logger
 kubectl apply -f logger/logger_deployment.yaml
 
-# sleep 30
-# # request server
-# kubectl apply -f request_server/request_server_service.yaml
-# kubectl apply -f request_server/request_server_deployment.yaml
+# restock worker
+kubectl apply -f restock_worker/restocker_deployment.yaml
 
-# # store server
+# sleep 30
+# request server
+kubectl apply -f request_server/request_server_service.yaml
+kubectl apply -f request_server/request_server_deployment.yaml
+
+# store server
 kubectl apply -f store_server/store_server_service.yaml
 kubectl apply -f store_server/store_server_deployment.yaml
 
 
+# audit DB setup
 helm install audit-cas \
     --set dbUser.password=audit_pass \
-    oci://REGISTRY_NAME/REPOSITORY_NAME/cassandra
+     oci://registry-1.docker.io/bitnamicharts/cassandra
+export CASSANDRA_PASSWORD=$(kubectl get secret --namespace "default" audit-cas-cassandra -o jsonpath="{.data.cassandra-password}" | base64 -d)
+kubectl run --namespace default audit-cas-cassandra-client --rm --tty -i --restart='Never' \
+   --env CASSANDRA_PASSWORD=$CASSANDRA_PASSWORD \
+    \
+   --image docker.io/bitnami/cassandra:4.1.3-debian-11-r76 -- bash
+# cqlsh -u cassandra -p $CASSANDRA_PASSWORD audit-cas-cassandra
+# CREATE keyspace order_audit;

@@ -1,0 +1,8 @@
+replicaCount: 1
+
+persistence:
+   size: 100Mi
+
+dbUser:
+   user: cassandra
+   password: audit_pass
