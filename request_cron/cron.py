@@ -1,16 +1,11 @@
 import json
 import os
-from pytz import utc
 from redis import Redis
 import uuid
 import logging
 import datetime
-import time
 import requests
 from pymongo import MongoClient
-
-
-from apscheduler.schedulers.background import BackgroundScheduler
 
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.DEBUG)
@@ -27,15 +22,12 @@ F_STORE_HOST = os.getenv("F_STORE_HOST", "localhost")
 # DB_USERNAME = os.getenv("DB_USERNAME", "root")
 # DB_PASSWORD = os.getenv("DB_PASSWORD", "rootpass")
 
-AUDIT = os.getenv("AUDIT", "order_audit")
 REQUEST_Q = "request"
 LOGGING_Q = "logging"
 RESTOCK_Q = "restock"
 
-#CASSANDRA HOST
-CASS_HOST = os.getenv("CASS_HOST", "localhost")
-STATION_USER = os.getenv("STATION_USER", "root")
-STATION_PASS= os.getenv("STATION_PASS", "pass")
+
+AUDIT_HOST = os.getenv("AUDIT_HOST", "localhost")
 
 queue = Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 
@@ -176,6 +168,7 @@ def add_final_order_onto_audit_db(order_bills):
 def send_satisfied_req_on_q(full_reqs):
     # Send the final order back on the q, for restock worker to handle
     for req in full_reqs:
+        print(f" Sending req {req}")
         queue.rpush(RESTOCK_Q, ", ".join(req))
 
 def cron_job():
@@ -193,10 +186,10 @@ def cron_job():
     send_satisfied_req_on_q(full_reqs)
 
 if __name__ == "__main__":
-    client = MongoClient('localhost', 27017)
+    client = MongoClient(AUDIT_HOST, 27017, uuidRepresentation = 'standard')
     db = client['order_audit']
-    db.create_collection("order_items")
-    db.create_collection("orders")
+    # db.create_collection("order_items")
+    # db.create_collection("orders")
 
     # # cron_job()
     # scheduler = BackgroundScheduler()

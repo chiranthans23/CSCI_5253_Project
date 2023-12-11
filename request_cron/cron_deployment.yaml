@@ -11,7 +11,7 @@ spec:
       template:
         spec:
           containers:
-          - image: chiranthans23/dcscproj-request-scheduled:v2
+          - image: chiranthans23/dcscproj-request-scheduled:v7
             env:
               - name: REDIS_HOST
                 value: "request-queue"
@@ -19,13 +19,9 @@ spec:
                 value: "6379"
               - name: F_STORE_HOST
                 value: store-server
-              - name: CASS_HOST
-                value: audit-cas-cassandra
-              - name: STATION_USER
-                value: cassandra
-              - name: STATION_PASS
-                value: audit_pass
+              - name: AUDIT_HOST
+                value: audit
             imagePullPolicy: Never
             name: request-scheduled
             resources: {}
-          restartPolicy: OnFailure
+          restartPolicy: Never
