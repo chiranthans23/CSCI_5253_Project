@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: restocker
-        image: chiranthans23/dcscproj-restocker:v7
+        image: chiranthans23/dcscproj-restocker:v8
         resources:
           requests:
             cpu: 100m

@@ -3,7 +3,7 @@ kind: CronJob
 metadata:
   name: request-scheduled
 spec:
-  schedule: '*/2 * * * *'
+  schedule: '*/1 * * * *'
   jobTemplate:
     metadata:
       name: request-scheduled
@@ -11,7 +11,7 @@ spec:
       template:
         spec:
           containers:
-          - image: chiranthans23/dcscproj-request-scheduled:v7
+          - image: chiranthans23/dcscproj-request-scheduled:v8
             env:
               - name: REDIS_HOST
                 value: "request-queue"

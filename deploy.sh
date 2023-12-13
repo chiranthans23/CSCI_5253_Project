@@ -5,6 +5,9 @@ kubectl apply -f station_db/station_secrets.yaml
 kubectl apply -f station_db/station_service.yaml
 kubectl apply -f station_db/station_deployment.yaml
 
+# audit db
+kubectl apply -f request_cron/audit_deployment.yaml
+kubectl apply -f request_cron/audit_service.yaml
 
 # for initializing dbs
 # kubectl run -it --rm --image=mysql --restart=Never mysql-client -- mysql --host station-mysql1 --password=c4c_station_pass

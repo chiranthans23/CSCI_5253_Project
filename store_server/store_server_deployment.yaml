@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: store-server
-        image: chiranthans23/dcscproj-store-server:v3
+        image: chiranthans23/dcscproj-store-server:v4
         resources:
           requests:
             cpu: 100m
