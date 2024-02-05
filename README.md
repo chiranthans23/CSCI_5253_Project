@@ -1,7 +1,7 @@
 
 # Team Members
-Chiranthan Sridhar
-Siva Gangadhar Pabbinedi
+Chiranthan Sridhar,
+Siva Gangadhar Pabbineedi,
 Preetham Prashanth Thava
 
 # Project
